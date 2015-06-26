@@ -29,10 +29,18 @@ func TestDetectPath(t *testing.T) {
 			"aaa.go",
 			"aaa.go",
 		},
+		{
+			"fjwoeifj ./aaa/bbb.sh fjweoi",
+			"./aaa/bbb.sh",
+		},
+		{
+			"fjwioajf ~/aaa/bbb.sh fwjeof",
+			"~/aaa/bbb.sh",
+		},
 	}
 	for _, v := range testCases {
 		if ret := DetectPath(v.Input); ret == nil || v.Output != ret.File {
-			t.Fatalf("\nInput: %#v\n\nOutput: %#v", v.Output, ret.File)
+			t.Fatalf("\nExpected: %#v\n\nOutput: %#v", v.Output, ret.File)
 		}
 	}
 }
