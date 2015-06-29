@@ -1,6 +1,8 @@
 package detectpath
 
 import (
+	"fmt"
+	"os"
 	"regexp"
 )
 
@@ -11,32 +13,42 @@ type MatchedPath struct {
 
 func DetectPath(line string) *MatchedPath {
 	// Extract file path from line
-	ret := checkPath(line)
+	ret := CheckPath(line)
 	if ret == nil {
 		return nil
 	}
 	// Check if this result is an actual file
-	return ret[0]
+	fmt.Println(ret)
+	for _, path := range ret {
+		if Exists(path.File) {
+			return path
+		}
+	}
+	return nil
 }
 
 // Check whether line includes file path
 // Priority: HomeDir > Basic > JustFile
-func checkPath(line string) []*MatchedPath {
+func CheckPath(line string) []*MatchedPath {
+	regs := []string{
+		// Home dir
+		"(~\\/([a-z.A-Z0-9-_]+\\/)+[+@a-zA-Z0-9\\-_+.]+\\.[a-zA-Z0-9]+)[:-]?(\\w+)?",
+		// Normal
+		"(\\/?([a-z.A-Z0-9-_]+\\/)+[+@a-zA-Z0-9\\-_+.]+\\.[a-zA-Z0-9]+)[:-]?(\\w+)?",
+		// Just file
+		"([+@a-zA-Z0-9\\-_+.]+\\.[a-zA-Z0-9]+)(\\s|$|:)+",
+	}
 	pathes := make([]*MatchedPath, 0)
-	if ret := isHomeDirPath(line); ret != nil {
-		pathes = append(pathes, ret)
-	}
-	if ret := isBasicPath(line); ret != nil {
-		pathes = append(pathes, ret)
-	}
-	if ret := isJustFilePath(line); ret != nil {
-		pathes = append(pathes, ret)
+	for _, v := range regs {
+		if ret := comparePathWithRegexp(line, v); ret != nil {
+			pathes = append(pathes, ret)
+		}
 	}
 	return pathes
 }
 
-func isBasicPath(line string) *MatchedPath {
-	re, err := regexp.Compile("(\\/?([a-z.A-Z0-9-_]+\\/)+[+@a-zA-Z0-9\\-_+.]+\\.[a-zA-Z0-9]+)[:-]?(\\w+)?")
+func comparePathWithRegexp(line, reg string) *MatchedPath {
+	re, err := regexp.Compile(reg)
 	if err != nil {
 		return nil
 	}
@@ -47,26 +59,7 @@ func isBasicPath(line string) *MatchedPath {
 	return &MatchedPath{matched[1], 0}
 }
 
-func isHomeDirPath(line string) *MatchedPath {
-	re, err := regexp.Compile("(~\\/([a-z.A-Z0-9-_]+\\/)+[+@a-zA-Z0-9\\-_+.]+\\.[a-zA-Z0-9]+)[:-]?(\\w+)?")
-	if err != nil {
-		return nil
-	}
-	matched := re.FindStringSubmatch(line)
-	if matched == nil {
-		return nil
-	}
-	return &MatchedPath{matched[1], 0}
-}
-
-func isJustFilePath(line string) *MatchedPath {
-	re, err := regexp.Compile("([+@a-zA-Z0-9\\-_+.]+\\.[a-zA-Z0-9]+)(\\s|$|:)+")
-	if err != nil {
-		return nil
-	}
-	matched := re.FindStringSubmatch(line)
-	if matched == nil {
-		return nil
-	}
-	return &MatchedPath{matched[1], 0}
+func Exists(name string) bool {
+	_, err := os.Stat(name)
+	return !os.IsNotExist(err)
 }
